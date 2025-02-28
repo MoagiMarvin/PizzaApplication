@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
- 
 using PizzaApplication.Models;
-using System.Collections.Generic;
+
 
 namespace PizzaApp.Controllers
 {
@@ -9,25 +8,26 @@ namespace PizzaApp.Controllers
     [ApiController]
     public class PizzasController : ControllerBase
     {
-        // This is the in-memory list of pizzas
-        private static readonly List<Pizza> Pizzas = new List<Pizza>
+        private readonly Services.IPizzaService _pizzaService;
+
+        public PizzasController(Services.IPizzaService pizzaService)
         {
-            new Pizza { Id = 1, Name = "Margherita", Description = "Classic pizza with mozzarella and tomato sauce", Price = 8.99m },
-            new Pizza { Id = 2, Name = "Pepperoni", Description = "Pizza topped with pepperoni slices", Price = 9.99m }
-        };
+            _pizzaService = pizzaService;
+        }
 
         // Get all pizzas
         [HttpGet]
         public ActionResult<IEnumerable<Pizza>> GetPizzas()
         {
-            return Ok(Pizzas);
+            var pizzas = _pizzaService.GetAllPizzas();
+            return Ok(pizzas);
         }
 
         // Get a specific pizza by id
         [HttpGet("{id}")]
         public ActionResult<Pizza> GetPizza(int id)
         {
-            var pizza = Pizzas.Find(p => p.Id == id);
+            var pizza = _pizzaService.GetPizzaById(id);
             if (pizza == null)
             {
                 return NotFound();
@@ -39,9 +39,13 @@ namespace PizzaApp.Controllers
         [HttpPost]
         public ActionResult<Pizza> PostPizza(Pizza pizza)
         {
-            pizza.Id = Pizzas.Count + 1; // Auto-generate ID for the new pizza
-            Pizzas.Add(pizza);
-            return CreatedAtAction(nameof(GetPizza), new { id = pizza.Id }, pizza);
+            if (string.IsNullOrEmpty(pizza.Size))
+            {
+                return BadRequest("Pizza size must be provided.");
+            }
+
+            var createdPizza = _pizzaService.AddPizza(pizza);
+            return CreatedAtAction(nameof(GetPizza), new { id = createdPizza.Id }, createdPizza);
         }
     }
 }
